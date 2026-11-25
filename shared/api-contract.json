@@ -18,6 +18,9 @@
     "/engine/capabilities": [
       "GET"
     ],
+    "/engine/station-modes": [
+      "GET"
+    ],
     "/lighting/set": [
       "POST"
     ],
@@ -39,7 +42,16 @@
     "/inspections/{inspection_id}/evidence": [
       "GET"
     ],
+    "/inspections/{inspection_id}/findings": [
+      "GET"
+    ],
     "/inspections/{inspection_id}/evidence/{capture_id}/image": [
+      "GET"
+    ],
+    "/inspections/{inspection_id}/evidence/{capture_id}/mask": [
+      "GET"
+    ],
+    "/inspections/{inspection_id}/evidence/{capture_id}/overlay": [
       "GET"
     ],
     "/benchmarks/latest": [

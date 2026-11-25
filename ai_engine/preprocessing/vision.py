@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ai_engine import ROOT
 from ai_engine.api.schemas import Box, Quality, View
+from ai_engine.preprocessing.detectors import CandidateDetector, local_contrast
 
 
 class LeatherRules(BaseModel):
@@ -18,6 +19,7 @@ class LeatherRules(BaseModel):
     maximum_glare_fraction: float = Field(gt=0, le=1)
     minimum_surface_fraction: float = Field(gt=0, lt=1)
     maximum_capture_attempts: int = Field(ge=2, le=16)
+    maximum_directional_candidates: int = Field(default=6, ge=0, le=40)
 
     @field_validator("required_views")
     @classmethod
@@ -51,7 +53,35 @@ def original_box(x, y, width, height, orientation):
                width=abs(first[0] - second[0]), height=abs(first[1] - second[1]))
 
 
-def analyze(image, orientation, rules):
+def background_distance(lab):
+    """Estimate a smooth background gradient from all four image edges."""
+    height, width = lab.shape[:2]
+    xs = np.linspace(-1, 1, width, dtype=np.float32)
+    ys = np.linspace(-1, 1, height, dtype=np.float32)
+    x = np.concatenate((xs, xs, np.full(height, -1), np.ones(height)))
+    y = np.concatenate((np.full(width, -1), np.ones(width), ys, ys))
+    samples = np.concatenate((lab[0], lab[-1], lab[:, 0], lab[:, -1]))
+    uniform = np.median(samples, axis=0)
+    uniform_spread = float(np.percentile(np.linalg.norm(samples - uniform, axis=1), 95))
+    if uniform_spread <= 22:
+        return np.linalg.norm(lab - uniform, axis=2), uniform_spread
+
+    design = np.column_stack((np.ones_like(x), x, y)).astype(np.float32)
+    keep = np.ones(len(samples), dtype=bool)
+    for _ in range(3):
+        coefficients = np.linalg.lstsq(design[keep], samples[keep], rcond=None)[0]
+        residual = np.linalg.norm(samples - design @ coefficients, axis=1)
+        keep = residual <= max(6, float(np.percentile(residual, 85)))
+    sides = np.split(residual, (width, width * 2, width * 2 + height))
+    if any(np.percentile(side, 95) > 22 for side in sides):
+        return None, 0
+    predicted = (coefficients[0] + xs[None, :, None] * coefficients[1]
+                 + ys[:, None, None] * coefficients[2])
+    return np.linalg.norm(lab - predicted, axis=2), float(np.percentile(residual, 95))
+
+
+def analyze(image, orientation, rules, *, detect_candidates=True, save_mask=None,
+            detector: CandidateDetector = local_contrast):
     """Evaluate a single piece on a uniform, contrasting matte background."""
     original_width, original_height = image.size
     image.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
@@ -64,14 +94,10 @@ def analyze(image, orientation, rules):
         return quality, None, []
 
     lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
-    border = np.concatenate((lab[0], lab[-1], lab[:, 0], lab[:, -1]))
-    background = np.median(border, axis=0)
-    border_distance = np.linalg.norm(border - background, axis=1)
-    background_spread = float(np.percentile(border_distance, 95))
-    if background_spread > 22:
+    distance, background_spread = background_distance(lab)
+    if distance is None:
         quality.warnings.append("background_nonuniform_or_product_clipped")
         return quality, None, []
-    distance = np.linalg.norm(lab - background, axis=2)
     foreground = (distance > max(20, 3 * background_spread)).astype(np.uint8)
     element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, element)
@@ -95,6 +121,16 @@ def analyze(image, orientation, rules):
     if not np.any(inner):
         quality.warnings.append("surface_too_narrow")
         return quality, None, []
+    if save_mask is not None:
+        mask = Image.fromarray(inner)
+        undo_orientation = {
+            2: Image.Transpose.FLIP_LEFT_RIGHT, 3: Image.Transpose.ROTATE_180, 4: Image.Transpose.FLIP_TOP_BOTTOM,
+            5: Image.Transpose.TRANSPOSE, 6: Image.Transpose.ROTATE_90, 7: Image.Transpose.TRANSVERSE,
+            8: Image.Transpose.ROTATE_270,
+        }
+        if orientation in undo_orientation:
+            mask = mask.transpose(undo_orientation[orientation])
+        save_mask(mask)
     quality.sharpness = round(float(cv2.Laplacian(gray, cv2.CV_32F)[inner].var()), 3)
     quality.dark_fraction = round(float(np.mean(gray[inner] <= 24)), 4)
     quality.glare_fraction = round(float(np.mean(np.min(rgb[inner], axis=1) >= 245)), 4)
@@ -106,21 +142,12 @@ def analyze(image, orientation, rules):
         quality.warnings.append("possible_glare_or_overexposure")
     quality.acceptable = not quality.warnings
     box = original_box(x / width, y / height, w / width, h / height, orientation)
-    if not quality.acceptable:
+    if not quality.acceptable or not detect_candidates:
         return quality, box, []
 
-    weights = (surface != 0).astype(np.float32)
-    local_weight = cv2.GaussianBlur(weights, (0, 0), 7)
-    local_sum = cv2.GaussianBlur(lab * weights[:, :, None], (0, 0), 7)
-    local_reference = local_sum / np.maximum(local_weight[:, :, None], 1e-6)
-    contrast = np.max(np.abs(lab - local_reference), axis=2)
-    marked = ((contrast >= 24) & inner).astype(np.uint8)
-    marked = cv2.morphologyEx(marked, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-    count, _, stats, _ = cv2.connectedComponentsWithStats(marked)
-    candidates = [row for row in stats[1:count] if row[4] >= 14 and max(row[2:4]) >= 8]
-    candidates.sort(key=lambda row: -int(row[4]))
-    if len(candidates) > 40:
+    candidates, truncated = detector(lab, surface, inner)
+    if truncated:
         quality.warnings.append("candidate_limit_reached")
     boxes = [original_box(cx / width, cy / height, cw / width, ch / height, orientation)
-             for cx, cy, cw, ch, _ in candidates[:40]]
+             for cx, cy, cw, ch in candidates]
     return quality, box, boxes

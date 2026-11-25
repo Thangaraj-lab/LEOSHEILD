@@ -6,3 +6,4 @@ maximum_dark_fraction: 0.35
 maximum_glare_fraction: 0.12
 minimum_surface_fraction: 0.12
 maximum_capture_attempts: 4
+maximum_directional_candidates: 6

@@ -1,9 +1,11 @@
 import json
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from io import BytesIO
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from pydantic import ValidationError
 
 from ai_engine import ROOT
@@ -43,8 +45,9 @@ def test_two_views_cover_required_surface_and_preserve_original(client, syntheti
     response = post(client, fields, second, base + "/captures", media="image/jpeg")
     assert response.status_code == 202, response.text
     result = InspectionResult.model_validate(response.json())
-    assert result.status == "completed"
-    assert result.recommendation == "review"
+    assert result.status == "awaiting_capture"
+    assert result.recommendation == "hold"
+    assert result.actions[0].lighting == "manual_right"
     assert result.coverage.complete and result.human_approval_required
     assert result.defects == []
     mark = result.uncertain_regions[0]
@@ -54,6 +57,19 @@ def test_two_views_cover_required_surface_and_preserve_original(client, syntheti
     assert client.get(result.evidence[1].image_url).content == second
     assert len(client.get(base + "/evidence").json()) == 2
     assert TestClient(create_app(tmp_path)).get(base).json() == response.json()
+    capture_path = result.evidence[1].image_url.removesuffix("/image")
+    mask = client.get(capture_path + "/mask")
+    overlay = client.get(capture_path + "/overlay")
+    assert mask.status_code == overlay.status_code == 200
+    with Image.open(BytesIO(mask.content)) as surface:
+        assert surface.getpixel((0, 0)) == 0 and surface.getpixel((320, 320)) != 0
+    assert post(client, fields, synthetic_image(shade=3), base + "/captures").status_code == 409
+    additional = fields | {"lighting": "manual_right"}
+    for size in (300, 310):
+        result = post(client, additional, synthetic_image(size=size), base + "/captures").json()
+    assert result["status"] == "completed" and result["recommendation"] == "review"
+    assert "directional_evidence_unresolved" in result["warnings"]
+    assert result["coverage"]["complete"] and len(result["evidence"]) == 4
 
 
 def test_clean_pair_requires_human_approval(client, synthetic_image):
@@ -62,6 +78,27 @@ def test_clean_pair_requires_human_approval(client, synthetic_image):
     result = post(client, CAPTURE | {"view": "back"}, synthetic_image(shade=8), url).json()
     assert result["recommendation"] == "no_defect_flagged"
     assert result["human_approval_required"] is True
+
+
+def test_mobile_page_uses_existing_authenticated_api(tmp_path):
+    with TestClient(create_app(tmp_path, token="x" * 32)) as client:
+        page = client.get("/mobile/")
+        assert page.status_code == 200 and 'capture="environment"' in page.text
+        assert client.get("/mobile/capture.js").status_code == 200
+        assert client.post("/inspect", content=b"").status_code == 401
+        assert client.post("/mobile-frame", content=b"").status_code == 401
+        assert "/mobile/" not in client.get("/openapi.json").json()["paths"]
+        assert "/mobile-frame" not in client.get("/openapi.json").json()["paths"]
+
+
+def test_mobile_presence_checks_do_not_create_inspections(client, synthetic_image, tmp_path):
+    frame = BytesIO()
+    Image.new("RGB", (640, 640), "lightgray").save(frame, format="PNG")
+    assert post(client, CAPTURE, frame.getvalue(), "/mobile-frame").json() == {"state": "empty", "box": None}
+    assert post(client, CAPTURE, synthetic_image(size=300), "/mobile-frame").json()["state"] == "adjust"
+    ready = post(client, CAPTURE, synthetic_image(mark=True), "/mobile-frame").json()
+    assert ready["state"] == "ready" and ready["box"]["width"] > 0
+    assert not list(tmp_path.iterdir())
 
 
 def test_resolution_and_lighting_block_coverage(client, synthetic_image):
@@ -74,6 +111,7 @@ def test_resolution_and_lighting_block_coverage(client, synthetic_image):
     assert result["actions"][0]["reason"] == "baseline_lighting_required"
     closed = client.post(base + "/finish").json()
     assert closed["status"] == "completed" and closed["recommendation"] == "hold"
+    assert closed["action_history"][-1]["reason"] == "baseline_lighting_required"
     assert post(client, CAPTURE, synthetic_image(shade=3), base + "/captures").status_code == 409
 
 
@@ -116,6 +154,8 @@ def test_upload_above_default_multipart_spool_threshold(client, synthetic_image)
 
 def test_hardware_failures_are_explicit(client):
     assert client.get("/hardware/status").json()["esp32_verified"] is False
+    assert client.get("/engine/station-modes").json()["manual_inspection_lighting"] is True
+    assert client.get("/engine/station-modes").json()["automatic_inspection_lighting"] is False
     assert client.post("/lighting/set", json={"mode": "LEFT", "brightness": 10}).status_code == 503
     assert client.post("/lighting/set", json={"mode": "UNKNOWN"}).status_code == 422
     assert client.post("/capture", json=CAPTURE).status_code == 503

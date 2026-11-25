@@ -19,6 +19,15 @@ Capture JPEG or PNG photos of the front and back of one real leather sample. Use
 
 Check the returned `actions` after each upload. Supply a fresh image when the engine requests recapture. A HOLD is expected until the mandatory evidence is present. Original image bytes and manifests are stored in `storage/inspections/`.
 
+If LEO-EVE requests right-side evidence, keep the phone and sample fixed and switch off the manually powered white light before moving it. Turn the light on and submit the new photo to the same inspection.
+
+```powershell
+.venv/Scripts/python.exe -m scripts.inspection_client --resume <inspection-id> --lighting manual_right right.jpg
+.venv/Scripts/python.exe -m scripts.check_station reference.jpg
+```
+
+For a station check, use a flat matte reference that contrasts with the background. Center it, keep all edges visible, and photograph it with the phone perpendicular to the work surface. The command reports framing and image quality. After moving or remounting the phone, use `--reference previous-reference.jpg` with the same reference object in the same position to compare framing. A ruler or colour card can be recorded in a separate reference photo. The current station reports uncalibrated and does not return physical dimensions or colour measurements.
+
 - [Laptop 2 integration](docs/api-integration.md)
 - [Implementation status](docs/implementation-status.md)
 - [Environment audit](docs/setup-report.md)

@@ -1,14 +1,18 @@
 import asyncio
 import os
+from contextlib import asynccontextmanager
 from hmac import compare_digest
+from io import BytesIO
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
+from PIL import Image, ImageDraw
 from serial.tools import list_ports
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
@@ -16,14 +20,15 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
 
 from ai_engine import ROOT
-from ai_engine.acquisition.image_loader import MAX_IMAGE_BYTES
+from ai_engine.acquisition.image_loader import MAX_IMAGE_BYTES, decode_image
 from ai_engine.api.schemas import (
-    BenchmarkResult, Capabilities, CaptureInput, Evidence, HardwareStatus, Health, InspectionInput, InspectionResult,
-    LightingInput, StationInput,
+    BenchmarkResult, CandidateDetail, Capabilities, CaptureInput, Evidence, HardwareStatus, Health, InspectionInput, InspectionResult,
+    LightingInput, StationInput, StationModes,
 )
 from ai_engine.evidence.artifact_store import ArtifactStore
 from ai_engine.leo_eve.engine import ClosedInspection, Engine
-from ai_engine.preprocessing.vision import load_leather_rules
+from ai_engine.preprocessing.vision import analyze, load_leather_rules
+from ai_engine.status_indicator import StatusIndicator
 
 MAX_REQUEST_BYTES = MAX_IMAGE_BYTES + 64 * 1024
 AUTH = HTTPBearer(auto_error=False)
@@ -34,12 +39,8 @@ class BoundedMultipartParser(MultiPartParser):
 
 
 def multipart_schema(*, initial):
-    properties = {
-        "image": {"type": "string", "format": "binary"},
-        "view": {"type": "string", "enum": ["front", "back"]},
-        "lighting": {"type": "string", "enum": ["manual_diffuse", "manual_left", "manual_right", "unknown"]},
-        "captured_at": {"type": "string", "format": "date-time"},
-    }
+    properties = dict(CaptureInput.model_json_schema()["properties"])
+    properties["image"] = {"type": "string", "format": "binary"}
     required = ["image", "view", "lighting"]
     if initial:
         properties.update(InspectionInput.model_json_schema()["properties"])
@@ -99,7 +100,7 @@ async def upload(request, *, initial):
         yield b""
 
     try:
-        form = await BoundedMultipartParser(request.headers, stream(), max_files=1, max_fields=6,
+        form = await BoundedMultipartParser(request.headers, stream(), max_files=1, max_fields=7,
                                             max_part_size=2048).parse()
     except (MultiPartException, ValueError) as exc:
         raise HTTPException(400, "Malformed multipart input") from exc
@@ -149,10 +150,20 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
             raise HTTPException(401, "Bearer token required", headers={"WWW-Authenticate": "Bearer"})
 
     rules = load_leather_rules()
-    engine = Engine(ArtifactStore(storage_root or ROOT / "storage/inspections"), rules)
+    indicator = StatusIndicator(os.getenv("LEO_STATUS_PORT"))
+    engine = Engine(ArtifactStore(storage_root or ROOT / "storage/inspections"), rules, indicator.publish)
     benchmark_path = benchmark_path or ROOT / "storage/benchmarks/latest.json"
-    app = FastAPI(title="LEO Shield inspection API", version="1.0.0", dependencies=[Depends(authorize)],
+    @asynccontextmanager
+    async def lifespan(_):
+        indicator.start()
+        try:
+            yield
+        finally:
+            await run_in_threadpool(indicator.stop)
+
+    app = FastAPI(title="LEO Shield inspection API", version="1.0.0", dependencies=[Depends(authorize)], lifespan=lifespan,
                   responses={401: {"description": "Bearer token required when authentication is configured"}})
+    app.mount("/mobile", StaticFiles(directory=ROOT / "ai_engine/mobile", html=True), name="mobile")
 
     @app.get("/health", response_model=Health)
     def health():
@@ -164,7 +175,7 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
             port_count = len(list_ports.comports())
         except OSError:
             port_count = None
-        return {"esp32_verified": False, "station_camera_verified": False, "external_lighting_verified": False,
+        return {"esp32_verified": indicator.available, "station_camera_verified": False, "external_lighting_verified": False,
                 "serial_ports_detected": port_count, "manual_upload_available": True}
 
     @app.get("/engine/capabilities", response_model=Capabilities, response_model_exclude_none=True)
@@ -174,6 +185,10 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
             "footwear": {"status": "unsupported"}, "auto_component": {"status": "unsupported"},
         }, "manual_upload": True, "classical_candidates": True, "trained_model": False,
             "physical_measurements": False, "station_acquisition": False}
+
+    @app.get("/engine/station-modes", response_model=StationModes)
+    def station_modes():
+        return StationModes(esp32_status_indicator_available=indicator.available)
 
     json_errors = {
         400: {"description": "Request body interrupted"}, 408: {"description": "Request body timed out"},
@@ -211,7 +226,25 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
         settings, capture, data, content_type = await upload(request, initial=True)
         if settings.profile != "leather":
             raise HTTPException(422, "Profile is unsupported")
+        indicator.publish("CAPTURING")
         return await engine_call(engine.start, settings, capture, data, content_type)
+
+    @app.post("/mobile-frame", include_in_schema=False)
+    async def mobile_frame(request: Request):
+        _, _, data, content_type = await upload(request, initial=False)
+
+        def assess():
+            image, _, orientation = decode_image(data, content_type)
+            quality, box, _ = analyze(image, orientation, rules, detect_candidates=False)
+            if quality.acceptable:
+                state = "ready"
+            elif quality.warnings == ["surface_not_isolated"]:
+                state = "empty"
+            else:
+                state = "adjust"
+            return {"state": state, "box": box}
+
+        return await engine_call(assess)
 
     @app.get("/inspections/{inspection_id}", response_model=InspectionResult,
              responses={404: {"description": "Inspection not found"}})
@@ -227,6 +260,7 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
                          409: {"description": "Duplicate capture, completed view or closed inspection"}})
     async def add(inspection_id: UUID, request: Request):
         _, capture, data, content_type = await upload(request, initial=False)
+        indicator.publish("CAPTURING")
         return await engine_call(engine.add_capture, inspection_id, capture, data, content_type)
 
     @app.post("/inspections/{inspection_id}/finish", response_model=InspectionResult,
@@ -239,6 +273,12 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
     def evidence(inspection_id: UUID):
         return get(inspection_id).evidence
 
+    @app.get("/inspections/{inspection_id}/findings", response_model=list[CandidateDetail],
+             responses={404: {"description": "Inspection not found"}})
+    def findings(inspection_id: UUID):
+        return [CandidateDetail(**item.model_dump(), candidate_id=uuid5(item.evidence_id, str(index)))
+                for index, item in enumerate(get(inspection_id).uncertain_regions)]
+
     @app.get("/inspections/{inspection_id}/evidence/{capture_id}/image", response_class=FileResponse,
              responses={200: {"content": {
                  media: {"schema": {"type": "string", "format": "binary"}} for media in ("image/jpeg", "image/png")
@@ -249,6 +289,36 @@ def create_app(storage_root=None, token=None, benchmark_path=None):
         if entry is None or not path.is_file():
             raise HTTPException(404, "Evidence not found")
         return FileResponse(path, media_type=entry.media_type, headers={"Cache-Control": "no-store"})
+
+    @app.get("/inspections/{inspection_id}/evidence/{capture_id}/mask", response_class=FileResponse,
+             responses={200: {"content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}},
+                        404: {"description": "No surface mask for this capture"}})
+    def surface_mask(inspection_id: UUID, capture_id: UUID):
+        path = engine.store.mask_path(inspection_id, capture_id)
+        if not any(item.capture_id == capture_id for item in evidence(inspection_id)) or not path.is_file():
+            raise HTTPException(404, "No surface mask for this capture")
+        return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+    @app.get("/inspections/{inspection_id}/evidence/{capture_id}/overlay", response_class=Response,
+             responses={200: {"content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}},
+                        404: {"description": "No surface mask for this capture"}})
+    def overlay(inspection_id: UUID, capture_id: UUID):
+        mask_response = surface_mask(inspection_id, capture_id)
+        result = get(inspection_id)
+        with Image.open(mask_response.path) as mask, Image.open(engine.store.image_path(inspection_id, capture_id)) as source:
+            photo = source.convert("RGB").resize(mask.size, Image.Resampling.LANCZOS)
+            marked = Image.blend(photo, Image.new("RGB", mask.size, (31, 174, 123)), 0.24)
+            photo.paste(marked, mask=mask)
+            draw = ImageDraw.Draw(photo)
+            for item in result.uncertain_regions:
+                if item.evidence_id == capture_id:
+                    box = item.box
+                    draw.rectangle((box.x * photo.width, box.y * photo.height,
+                                    (box.x + box.width) * photo.width, (box.y + box.height) * photo.height),
+                                   outline=(255, 195, 73), width=2)
+            output = BytesIO()
+            photo.save(output, "PNG")
+        return Response(output.getvalue(), media_type="image/png", headers={"Cache-Control": "no-store"})
 
     @app.get("/benchmarks/latest", response_model=BenchmarkResult,
              responses={404: {"description": "No measured physical benchmark available"}})

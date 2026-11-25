@@ -83,6 +83,32 @@
         ]
       }
     },
+    "/engine/station-modes": {
+      "get": {
+        "summary": "Station Modes",
+        "operationId": "station_modes_engine_station_modes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationModes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/lighting/set": {
       "post": {
         "summary": "Set Lighting",
@@ -185,6 +211,9 @@
                       "manual_diffuse",
                       "manual_left",
                       "manual_right",
+                      "manual_top",
+                      "manual_front",
+                      "manual_back",
                       "unknown"
                     ],
                     "title": "Lighting"
@@ -200,6 +229,17 @@
                       }
                     ],
                     "title": "Captured At"
+                  },
+                  "camera_source": {
+                    "type": "string",
+                    "enum": [
+                      "unspecified",
+                      "local_file",
+                      "phone_file",
+                      "phone_live"
+                    ],
+                    "title": "Camera Source",
+                    "default": "unspecified"
                   }
                 },
                 "additionalProperties": false,
@@ -261,16 +301,13 @@
             "multipart/form-data": {
               "schema": {
                 "properties": {
-                  "image": {
-                    "type": "string",
-                    "format": "binary"
-                  },
                   "view": {
                     "type": "string",
                     "enum": [
                       "front",
                       "back"
-                    ]
+                    ],
+                    "title": "View"
                   },
                   "lighting": {
                     "type": "string",
@@ -278,12 +315,39 @@
                       "manual_diffuse",
                       "manual_left",
                       "manual_right",
+                      "manual_top",
+                      "manual_front",
+                      "manual_back",
                       "unknown"
-                    ]
+                    ],
+                    "title": "Lighting"
                   },
                   "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Captured At"
+                  },
+                  "camera_source": {
                     "type": "string",
-                    "format": "date-time"
+                    "enum": [
+                      "unspecified",
+                      "local_file",
+                      "phone_file",
+                      "phone_live"
+                    ],
+                    "title": "Camera Source",
+                    "default": "unspecified"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
                   },
                   "product_id": {
                     "type": "string",
@@ -518,29 +582,53 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "image": {
-                    "type": "string",
-                    "format": "binary"
-                  },
                   "view": {
-                    "type": "string",
                     "enum": [
                       "front",
                       "back"
-                    ]
+                    ],
+                    "title": "View",
+                    "type": "string"
                   },
                   "lighting": {
-                    "type": "string",
                     "enum": [
                       "manual_diffuse",
                       "manual_left",
                       "manual_right",
+                      "manual_top",
+                      "manual_front",
+                      "manual_back",
                       "unknown"
-                    ]
+                    ],
+                    "title": "Lighting",
+                    "type": "string"
                   },
                   "captured_at": {
+                    "anyOf": [
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Captured At"
+                  },
+                  "camera_source": {
+                    "default": "unspecified",
+                    "enum": [
+                      "unspecified",
+                      "local_file",
+                      "phone_file",
+                      "phone_live"
+                    ],
+                    "title": "Camera Source",
+                    "type": "string"
+                  },
+                  "image": {
                     "type": "string",
-                    "format": "date-time"
+                    "format": "binary"
                   }
                 },
                 "required": [
@@ -661,6 +749,61 @@
         }
       }
     },
+    "/inspections/{inspection_id}/findings": {
+      "get": {
+        "summary": "Findings",
+        "operationId": "findings_inspections__inspection_id__findings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CandidateDetail"
+                  },
+                  "title": "Response Findings Inspections  Inspection Id  Findings Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "Inspection not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/inspections/{inspection_id}/evidence/{capture_id}/image": {
       "get": {
         "summary": "Original",
@@ -715,6 +858,130 @@
           },
           "404": {
             "description": "Evidence not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/evidence/{capture_id}/mask": {
+      "get": {
+        "summary": "Surface Mask",
+        "operationId": "surface_mask_inspections__inspection_id__evidence__capture_id__mask_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "capture_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Capture Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "No surface mask for this capture"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/evidence/{capture_id}/overlay": {
+      "get": {
+        "summary": "Overlay",
+        "operationId": "overlay_inspections__inspection_id__evidence__capture_id__overlay_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "capture_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Capture Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "No surface mask for this capture"
           },
           "422": {
             "description": "Validation Error",
@@ -799,6 +1066,9 @@
                   "manual_diffuse",
                   "manual_left",
                   "manual_right",
+                  "manual_top",
+                  "manual_front",
+                  "manual_back",
                   "unknown"
                 ]
               },
@@ -807,6 +1077,27 @@
               }
             ],
             "title": "Lighting"
+          },
+          "target_box": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Box"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
           }
         },
         "type": "object",
@@ -843,9 +1134,12 @@
           },
           "algorithm_version": {
             "type": "string",
-            "const": "0.1.0",
+            "enum": [
+              "0.1.0",
+              "0.2.0"
+            ],
             "title": "Algorithm Version",
-            "default": "0.1.0"
+            "default": "0.2.0"
           },
           "pieces": {
             "type": "integer",
@@ -987,6 +1281,68 @@
         ],
         "title": "Candidate"
       },
+      "CandidateDetail": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evidence Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "local_contrast_candidate",
+            "title": "Kind",
+            "default": "local_contrast_candidate"
+          },
+          "box": {
+            "$ref": "#/components/schemas/Box"
+          },
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "category": {
+            "type": "string",
+            "const": "unknown_surface_anomaly",
+            "title": "Category",
+            "default": "unknown_surface_anomaly"
+          },
+          "method": {
+            "type": "string",
+            "const": "masked_local_contrast",
+            "title": "Method",
+            "default": "masked_local_contrast"
+          },
+          "severity": {
+            "type": "null",
+            "title": "Severity"
+          },
+          "uncertainty": {
+            "type": "string",
+            "const": "unverified",
+            "title": "Uncertainty",
+            "default": "unverified"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation",
+            "default": "Region differs from its local surface reference. Inspect the supporting image to confirm."
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "region_id",
+          "box",
+          "candidate_id"
+        ],
+        "title": "CandidateDetail"
+      },
       "Capabilities": {
         "properties": {
           "contract_version": {
@@ -1093,6 +1449,9 @@
               "manual_diffuse",
               "manual_left",
               "manual_right",
+              "manual_top",
+              "manual_front",
+              "manual_back",
               "unknown"
             ],
             "title": "Lighting"
@@ -1142,6 +1501,26 @@
           "processing_time_ms": {
             "type": "number",
             "title": "Processing Time Ms"
+          },
+          "camera_source": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "local_file",
+              "phone_file",
+              "phone_live"
+            ],
+            "title": "Camera Source",
+            "default": "unspecified"
+          },
+          "algorithm_version": {
+            "type": "string",
+            "enum": [
+              "0.1.0",
+              "0.2.0"
+            ],
+            "title": "Algorithm Version",
+            "default": "0.1.0"
           }
         },
         "type": "object",
@@ -1262,9 +1641,12 @@
           },
           "algorithm_version": {
             "type": "string",
-            "const": "0.1.0",
+            "enum": [
+              "0.1.0",
+              "0.2.0"
+            ],
             "title": "Algorithm Version",
-            "default": "0.1.0"
+            "default": "0.2.0"
           },
           "inspection_id": {
             "type": "string",
@@ -1327,6 +1709,9 @@
                 "manual_diffuse",
                 "manual_left",
                 "manual_right",
+                "manual_top",
+                "manual_front",
+                "manual_back",
                 "unknown"
               ]
             },
@@ -1548,6 +1933,9 @@
               "manual_diffuse",
               "manual_left",
               "manual_right",
+              "manual_top",
+              "manual_front",
+              "manual_back",
               "unknown"
             ],
             "title": "Required Lighting",
@@ -1561,6 +1949,9 @@
                   "manual_diffuse",
                   "manual_left",
                   "manual_right",
+                  "manual_top",
+                  "manual_front",
+                  "manual_back",
                   "unknown"
                 ]
               },
@@ -1598,6 +1989,43 @@
           "view"
         ],
         "title": "Region"
+      },
+      "StationModes": {
+        "properties": {
+          "esp32_status_indicator_available": {
+            "type": "boolean",
+            "title": "Esp32 Status Indicator Available"
+          },
+          "automatic_inspection_lighting": {
+            "type": "boolean",
+            "const": false,
+            "title": "Automatic Inspection Lighting",
+            "default": false
+          },
+          "manual_inspection_lighting": {
+            "type": "boolean",
+            "const": true,
+            "title": "Manual Inspection Lighting",
+            "default": true
+          },
+          "smartphone_file_upload": {
+            "type": "boolean",
+            "const": true,
+            "title": "Smartphone File Upload",
+            "default": true
+          },
+          "live_phone_camera_verified": {
+            "type": "boolean",
+            "const": false,
+            "title": "Live Phone Camera Verified",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "esp32_status_indicator_available"
+        ],
+        "title": "StationModes"
       },
       "ValidationError": {
         "properties": {

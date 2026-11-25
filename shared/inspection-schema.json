@@ -38,6 +38,9 @@
                 "manual_diffuse",
                 "manual_left",
                 "manual_right",
+                "manual_top",
+                "manual_front",
+                "manual_back",
                 "unknown"
               ],
               "type": "string"
@@ -48,6 +51,29 @@
           ],
           "default": null,
           "title": "Lighting"
+        },
+        "target_box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Box"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instruction"
         }
       },
       "required": [
@@ -173,6 +199,9 @@
             "manual_diffuse",
             "manual_left",
             "manual_right",
+            "manual_top",
+            "manual_front",
+            "manual_back",
             "unknown"
           ],
           "title": "Lighting",
@@ -224,6 +253,26 @@
         "processing_time_ms": {
           "title": "Processing Time Ms",
           "type": "number"
+        },
+        "camera_source": {
+          "default": "unspecified",
+          "enum": [
+            "unspecified",
+            "local_file",
+            "phone_file",
+            "phone_live"
+          ],
+          "title": "Camera Source",
+          "type": "string"
+        },
+        "algorithm_version": {
+          "default": "0.1.0",
+          "enum": [
+            "0.1.0",
+            "0.2.0"
+          ],
+          "title": "Algorithm Version",
+          "type": "string"
         }
       },
       "required": [
@@ -349,6 +398,9 @@
             "manual_diffuse",
             "manual_left",
             "manual_right",
+            "manual_top",
+            "manual_front",
+            "manual_back",
             "unknown"
           ],
           "title": "Required Lighting",
@@ -361,6 +413,9 @@
                 "manual_diffuse",
                 "manual_left",
                 "manual_right",
+                "manual_top",
+                "manual_front",
+                "manual_back",
                 "unknown"
               ],
               "type": "string"
@@ -433,8 +488,11 @@
       "type": "string"
     },
     "algorithm_version": {
-      "const": "0.1.0",
-      "default": "0.1.0",
+      "default": "0.2.0",
+      "enum": [
+        "0.1.0",
+        "0.2.0"
+      ],
       "title": "Algorithm Version",
       "type": "string"
     },
@@ -498,6 +556,9 @@
           "manual_diffuse",
           "manual_left",
           "manual_right",
+          "manual_top",
+          "manual_front",
+          "manual_back",
           "unknown"
         ],
         "type": "string"

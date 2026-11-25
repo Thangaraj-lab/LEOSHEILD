@@ -2,11 +2,13 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 Profile = Literal["leather", "footwear", "auto_component"]
 View = Literal["front", "back"]
-Lighting = Literal["manual_diffuse", "manual_left", "manual_right", "unknown"]
+Lighting = Literal["manual_diffuse", "manual_left", "manual_right", "manual_top", "manual_front", "manual_back", "unknown"]
+CameraSource = Literal["unspecified", "local_file", "phone_file", "phone_live"]
+AlgorithmVersion = Literal["0.1.0", "0.2.0"]
 Status = Literal["pending", "capturing", "analyzing", "awaiting_capture", "completed", "failed", "cancelled"]
 Recommendation = Literal["no_defect_flagged", "review", "reject_recommended", "hold"]
 
@@ -27,6 +29,18 @@ class CaptureInput(BaseModel):
     view: View
     lighting: Lighting
     captured_at: AwareDatetime | None = None
+    camera_source: CameraSource = "unspecified"
+
+    @field_validator("lighting", mode="before")
+    @classmethod
+    def normalize_lighting(cls, value):
+        if value == "NORMAL":
+            return "manual_diffuse"
+        if value == "UNKNOWN":
+            return "unknown"
+        if value in ("TOP", "LEFT", "RIGHT", "FRONT", "BACK"):
+            return "manual_" + value.lower()
+        return value
 
 
 class LightingInput(BaseModel):
@@ -76,11 +90,22 @@ class Candidate(BaseModel):
     box: Box
 
 
+class CandidateDetail(Candidate):
+    candidate_id: UUID
+    category: Literal["unknown_surface_anomaly"] = "unknown_surface_anomaly"
+    method: Literal["masked_local_contrast"] = "masked_local_contrast"
+    severity: None = None
+    uncertainty: Literal["unverified"] = "unverified"
+    explanation: str = "Region differs from its local surface reference. Inspect the supporting image to confirm."
+
+
 class Action(BaseModel):
     kind: Literal["capture_required_view", "recapture", "human_review"]
     reason: str
     view: View | None = None
     lighting: Lighting | None = None
+    target_box: Box | None = None
+    instruction: str | None = None
 
 
 class Evidence(BaseModel):
@@ -95,11 +120,13 @@ class Evidence(BaseModel):
     calibration_status: Literal["uncalibrated"] = "uncalibrated"
     quality: Quality
     processing_time_ms: float
+    camera_source: CameraSource = "unspecified"
+    algorithm_version: AlgorithmVersion = "0.1.0"
 
 
 class InspectionResult(InspectionInput):
     contract_version: Literal["1.0.0"] = "1.0.0"
-    algorithm_version: Literal["0.1.0"] = "0.1.0"
+    algorithm_version: AlgorithmVersion = "0.2.0"
     inspection_id: UUID
     execution_mode: Literal["real"] = "real"
     status: Status
@@ -147,12 +174,20 @@ class Capabilities(BaseModel):
     station_acquisition: bool
 
 
+class StationModes(BaseModel):
+    esp32_status_indicator_available: bool
+    automatic_inspection_lighting: Literal[False] = False
+    manual_inspection_lighting: Literal[True] = True
+    smartphone_file_upload: Literal[True] = True
+    live_phone_camera_verified: Literal[False] = False
+
+
 class BenchmarkResult(BaseModel):
     measured_at: datetime
     dataset_id: str
     source: Literal["physical", "synthetic"]
     method: Literal["manual_diffuse_two_view"] = "manual_diffuse_two_view"
-    algorithm_version: Literal["0.1.0"] = "0.1.0"
+    algorithm_version: AlgorithmVersion = "0.2.0"
     pieces: int
     captures: int
     holds: int

@@ -13,6 +13,7 @@ import httpx
 import uvicorn
 
 from ai_engine.api.app import create_app
+from scripts.inspection_client import main as inspection_client
 from tests.conftest import synthetic_image
 
 
@@ -30,6 +31,29 @@ def restrict_network(event, args):
 def serve(storage):
     sys.addaudithook(restrict_network)
     uvicorn.run(create_app(Path(storage)), host="127.0.0.1", port=8001, access_log=False)
+
+
+def verify_client_resume(storage, image):
+    front = Path(storage) / "front.png"
+    back = Path(storage) / "back.png"
+    retake = Path(storage) / "retake.png"
+    front.write_bytes(image(size=300))
+    back.write_bytes(image(mark=True))
+    retake.write_bytes(image())
+    command = [sys.executable, "-m", "tests.local_http_smoke", "--client"]
+    environment = {**os.environ, "LEO_API_TOKEN": ""}
+
+    def run(*arguments):
+        output = subprocess.check_output([*command, *map(str, arguments)], text=True, env=environment)
+        return json.loads(output)
+
+    initial = run("--product", "retake-fixture", "--lot", "smoke-test", front, back)
+    assert len(initial["evidence"]) == 1 and initial["actions"][0]["view"] == "front"
+    corrected = run("--resume", initial["inspection_id"], retake)
+    assert corrected["coverage"]["inspected_regions"] == 1 and corrected["actions"][0]["view"] == "back"
+    result = run("--resume", initial["inspection_id"], back)
+    assert result["coverage"]["complete"] and result["recommendation"] == "hold"
+    assert result["actions"][0]["lighting"] == "manual_right"
 
 
 def main():
@@ -62,7 +86,9 @@ def main():
                                        data={"view": "back", "lighting": "manual_diffuse"})
                     back.raise_for_status()
                     result = client.get(base).raise_for_status().json()
-                    assert result["status"] == "completed" and result["coverage"]["complete"]
+                    assert result["status"] == "awaiting_capture" and result["coverage"]["complete"]
+                    assert result["actions"][0]["lighting"] == "manual_right"
+                    result = client.post(base + "/finish").raise_for_status().json()
                     assert result["recommendation"] == "review" and result["human_approval_required"]
                     original = client.get(result["evidence"][1]["image_url"]).raise_for_status()
                     assert original.content == image(mark=True)
@@ -71,12 +97,18 @@ def main():
                                       "recommendations": ["hold", "review"],
                                       "decode_and_analysis_ms": result["processing_time_ms"],
                                       "http_sequence_ms": round((monotonic() - start) * 1000, 3)}, indent=2))
+                    verify_client_resume(storage, image)
+                    print("Manual upload and requested retakes verified over HTTP.")
             finally:
                 server.terminate()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
+    if len(sys.argv) > 2 and sys.argv[1] == "--client":
+        sys.addaudithook(restrict_network)
+        del sys.argv[1]
+        inspection_client()
+    elif len(sys.argv) == 2:
         serve(sys.argv[1])
     else:
         main()

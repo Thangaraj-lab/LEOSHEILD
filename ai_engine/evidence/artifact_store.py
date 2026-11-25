@@ -29,12 +29,17 @@ class ArtifactStore:
             (self._job_dir(inspection_id) / "manifest.json").read_bytes()
         )
 
-    def write(self, result, capture=None, data=None):
+    def write(self, result, capture=None, data=None, mask=None):
         directory = self._job_dir(result.inspection_id)
         directory.mkdir(parents=True, exist_ok=True)
         if capture:
             atomic_write(directory / str(capture.capture_id), data)
+            if mask is not None:
+                atomic_write(self.mask_path(result.inspection_id, capture.capture_id), mask)
         atomic_write(directory / "manifest.json", result.model_dump_json(indent=2).encode())
 
     def image_path(self, inspection_id, capture_id):
         return self._job_dir(inspection_id) / str(capture_id)
+
+    def mask_path(self, inspection_id, capture_id):
+        return self._job_dir(inspection_id) / f"{capture_id}.mask.png"
