@@ -1,0 +1,13 @@
+.venv/
+.tools/
+__pycache__/
+.pytest_cache/
+.env
+storage/
+datasets/raw/
+datasets/processed/
+datasets/annotations/
+models/checkpoints/
+models/pretrained/
+models/exported/
+*.pyc

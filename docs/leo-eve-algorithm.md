@@ -1,0 +1,9 @@
+# LEO-EVE 0.1.0
+
+The experimental leather profile requires front and back regions under diffuse manual lighting. Each view records a normalized surface box, quality metrics, required and completed lighting, and coverage state. Coverage means the configured view was processed at acceptable quality. It does not estimate the fraction of all physical surfaces visible to the camera.
+
+At ingestion, check image type, dimensions and decode integrity. Estimate matte background colour from border pixels in Lab space. Segment a single sufficiently large contrasting foreground, then calculate sharpness, dark-pixel fraction and possible glare inside an eroded surface mask. Use a Gaussian local reference normalized by the surface mask and connected components to localize salient deviations. Candidate boxes indicate locations for review. Thresholds are initial engineering settings and scores are uncalibrated.
+
+The scheduler first requests the earliest incomplete mandatory view. It requests recapture when quality or baseline lighting was insufficient. Four accepted upload attempts or ten minutes from the first receipt terminate unresolved coverage with HOLD. An operator can also end an incomplete job. Once both regions satisfy the profile, visible candidates lead to REVIEW and a clean heuristic run leads to NO_DEFECT_FLAGGED. Recommendations always require a human decision.
+
+The prototype uses rule-based scheduling and measures decode and analysis latency per capture. Cross-light registration, fusion, selective model activation and evidence-per-cost optimization require controlled paired captures, comparable detection modules and measured cost data. Established methods here include Lab colour separation, Laplacian variance, local contrast and connected components. The project-specific work combines mandatory coverage, operator scheduling and evidence retention for a low-cost station.

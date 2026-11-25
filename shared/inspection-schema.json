@@ -1,0 +1,584 @@
+{
+  "$defs": {
+    "Action": {
+      "properties": {
+        "kind": {
+          "enum": [
+            "capture_required_view",
+            "recapture",
+            "human_review"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "view": {
+          "anyOf": [
+            {
+              "enum": [
+                "front",
+                "back"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "View"
+        },
+        "lighting": {
+          "anyOf": [
+            {
+              "enum": [
+                "manual_diffuse",
+                "manual_left",
+                "manual_right",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lighting"
+        }
+      },
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "Box": {
+      "properties": {
+        "x": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        },
+        "width": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Height",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "Box",
+      "type": "object"
+    },
+    "Candidate": {
+      "properties": {
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "local_contrast_candidate",
+          "default": "local_contrast_candidate",
+          "title": "Kind",
+          "type": "string"
+        },
+        "box": {
+          "$ref": "#/$defs/Box"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "region_id",
+        "box"
+      ],
+      "title": "Candidate",
+      "type": "object"
+    },
+    "Coverage": {
+      "properties": {
+        "required_regions": {
+          "title": "Required Regions",
+          "type": "integer"
+        },
+        "inspected_regions": {
+          "title": "Inspected Regions",
+          "type": "integer"
+        },
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/Region"
+          },
+          "title": "Regions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "required_regions",
+        "inspected_regions",
+        "complete",
+        "regions"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Evidence": {
+      "properties": {
+        "capture_id": {
+          "format": "uuid",
+          "title": "Capture Id",
+          "type": "string"
+        },
+        "view": {
+          "enum": [
+            "front",
+            "back"
+          ],
+          "title": "View",
+          "type": "string"
+        },
+        "lighting": {
+          "enum": [
+            "manual_diffuse",
+            "manual_left",
+            "manual_right",
+            "unknown"
+          ],
+          "title": "Lighting",
+          "type": "string"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Captured At"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "media_type": {
+          "enum": [
+            "image/jpeg",
+            "image/png"
+          ],
+          "title": "Media Type",
+          "type": "string"
+        },
+        "image_url": {
+          "title": "Image Url",
+          "type": "string"
+        },
+        "calibration_status": {
+          "const": "uncalibrated",
+          "default": "uncalibrated",
+          "title": "Calibration Status",
+          "type": "string"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        },
+        "processing_time_ms": {
+          "title": "Processing Time Ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "capture_id",
+        "view",
+        "lighting",
+        "received_at",
+        "sha256",
+        "media_type",
+        "image_url",
+        "quality",
+        "processing_time_ms"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Quality": {
+      "properties": {
+        "acceptable": {
+          "default": false,
+          "title": "Acceptable",
+          "type": "boolean"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "sharpness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sharpness"
+        },
+        "dark_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dark Fraction"
+        },
+        "glare_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Glare Fraction"
+        }
+      },
+      "title": "Quality",
+      "type": "object"
+    },
+    "Region": {
+      "properties": {
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "view": {
+          "enum": [
+            "front",
+            "back"
+          ],
+          "title": "View",
+          "type": "string"
+        },
+        "box": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Box"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "required_lighting": {
+          "default": "manual_diffuse",
+          "enum": [
+            "manual_diffuse",
+            "manual_left",
+            "manual_right",
+            "unknown"
+          ],
+          "title": "Required Lighting",
+          "type": "string"
+        },
+        "completed_lighting": {
+          "anyOf": [
+            {
+              "enum": [
+                "manual_diffuse",
+                "manual_left",
+                "manual_right",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed Lighting"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state": {
+          "default": "NOT_INSPECTED",
+          "enum": [
+            "NOT_INSPECTED",
+            "INSUFFICIENT_QUALITY",
+            "INSPECTED",
+            "SUSPICIOUS"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "region_id",
+        "view"
+      ],
+      "title": "Region",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "product_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Product Id",
+      "type": "string"
+    },
+    "lot_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Lot Id",
+      "type": "string"
+    },
+    "profile": {
+      "enum": [
+        "leather",
+        "footwear",
+        "auto_component"
+      ],
+      "title": "Profile",
+      "type": "string"
+    },
+    "contract_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "algorithm_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Algorithm Version",
+      "type": "string"
+    },
+    "inspection_id": {
+      "format": "uuid",
+      "title": "Inspection Id",
+      "type": "string"
+    },
+    "execution_mode": {
+      "const": "real",
+      "default": "real",
+      "title": "Execution Mode",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "capturing",
+        "analyzing",
+        "awaiting_capture",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "recommendation": {
+      "enum": [
+        "no_defect_flagged",
+        "review",
+        "reject_recommended",
+        "hold"
+      ],
+      "title": "Recommendation",
+      "type": "string"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "image_quality": {
+      "$ref": "#/$defs/Quality"
+    },
+    "defects": {
+      "items": {
+        "$ref": "#/$defs/Candidate"
+      },
+      "title": "Defects",
+      "type": "array"
+    },
+    "uncertain_regions": {
+      "items": {
+        "$ref": "#/$defs/Candidate"
+      },
+      "title": "Uncertain Regions",
+      "type": "array"
+    },
+    "lighting_modes_used": {
+      "items": {
+        "enum": [
+          "manual_diffuse",
+          "manual_left",
+          "manual_right",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Lighting Modes Used",
+      "type": "array"
+    },
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "title": "Actions",
+      "type": "array"
+    },
+    "action_history": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "title": "Action History",
+      "type": "array"
+    },
+    "processing_time_ms": {
+      "title": "Processing Time Ms",
+      "type": "number"
+    },
+    "capture_time_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capture Time Ms"
+    },
+    "model_version": {
+      "default": null,
+      "title": "Model Version",
+      "type": "null"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "human_approval_required": {
+      "const": true,
+      "default": true,
+      "title": "Human Approval Required",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "product_id",
+    "lot_id",
+    "profile",
+    "inspection_id",
+    "status",
+    "recommendation",
+    "coverage",
+    "image_quality",
+    "defects",
+    "uncertain_regions",
+    "lighting_modes_used",
+    "actions",
+    "action_history",
+    "processing_time_ms",
+    "warnings",
+    "evidence"
+  ],
+  "title": "InspectionResult",
+  "type": "object"
+}

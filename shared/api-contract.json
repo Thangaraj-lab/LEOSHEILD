@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "engine_port": 8001,
+  "business_backend_port": 8000,
+  "transport": "local HTTP",
+  "image_media_types": [
+    "image/jpeg",
+    "image/png"
+  ],
+  "coordinates": "normalized original encoded pixel grid; origin at upper left",
+  "endpoints": {
+    "/health": [
+      "GET"
+    ],
+    "/hardware/status": [
+      "GET"
+    ],
+    "/engine/capabilities": [
+      "GET"
+    ],
+    "/lighting/set": [
+      "POST"
+    ],
+    "/capture": [
+      "POST"
+    ],
+    "/inspect": [
+      "POST"
+    ],
+    "/inspections/{inspection_id}": [
+      "GET"
+    ],
+    "/inspections/{inspection_id}/captures": [
+      "POST"
+    ],
+    "/inspections/{inspection_id}/finish": [
+      "POST"
+    ],
+    "/inspections/{inspection_id}/evidence": [
+      "GET"
+    ],
+    "/inspections/{inspection_id}/evidence/{capture_id}/image": [
+      "GET"
+    ],
+    "/benchmarks/latest": [
+      "GET"
+    ]
+  },
+  "openapi": "openapi.json",
+  "inspection_schema": "inspection-schema.json"
+}

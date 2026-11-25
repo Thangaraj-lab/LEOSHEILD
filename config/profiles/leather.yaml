@@ -1,0 +1,8 @@
+material: leather
+required_views: [front, back]
+minimum_side: 512
+minimum_sharpness: 12.0
+maximum_dark_fraction: 0.35
+maximum_glare_fraction: 0.12
+minimum_surface_fraction: 0.12
+maximum_capture_attempts: 4

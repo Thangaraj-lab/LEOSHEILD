@@ -1,0 +1,1650 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LEO Shield inspection API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/hardware/status": {
+      "get": {
+        "summary": "Hardware",
+        "operationId": "hardware_hardware_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HardwareStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/engine/capabilities": {
+      "get": {
+        "summary": "Capabilities",
+        "operationId": "capabilities_engine_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/lighting/set": {
+      "post": {
+        "summary": "Set Lighting",
+        "operationId": "set_lighting_lighting_set_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "OFF",
+                      "ALL_WHITE",
+                      "TOP",
+                      "LEFT",
+                      "RIGHT",
+                      "FRONT",
+                      "BACK"
+                    ],
+                    "title": "Mode"
+                  },
+                  "brightness": {
+                    "type": "integer",
+                    "maximum": 255.0,
+                    "minimum": 0.0,
+                    "title": "Brightness",
+                    "default": 0
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "mode"
+                ],
+                "title": "LightingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "400": {
+            "description": "Request body interrupted"
+          },
+          "408": {
+            "description": "Request body timed out"
+          },
+          "413": {
+            "description": "Request exceeds size limit"
+          },
+          "415": {
+            "description": "Expected application/json"
+          },
+          "422": {
+            "description": "Invalid fields"
+          },
+          "503": {
+            "description": "Lighting hardware unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/capture": {
+      "post": {
+        "summary": "Request Capture",
+        "operationId": "request_capture_capture_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "view": {
+                    "type": "string",
+                    "enum": [
+                      "front",
+                      "back"
+                    ],
+                    "title": "View"
+                  },
+                  "lighting": {
+                    "type": "string",
+                    "enum": [
+                      "manual_diffuse",
+                      "manual_left",
+                      "manual_right",
+                      "unknown"
+                    ],
+                    "title": "Lighting"
+                  },
+                  "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Captured At"
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "view",
+                  "lighting"
+                ],
+                "title": "CaptureInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "400": {
+            "description": "Request body interrupted"
+          },
+          "408": {
+            "description": "Request body timed out"
+          },
+          "413": {
+            "description": "Request exceeds size limit"
+          },
+          "415": {
+            "description": "Expected application/json"
+          },
+          "422": {
+            "description": "Invalid fields"
+          },
+          "503": {
+            "description": "Station camera unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/inspect": {
+      "post": {
+        "summary": "Start",
+        "operationId": "start_inspect_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "view": {
+                    "type": "string",
+                    "enum": [
+                      "front",
+                      "back"
+                    ]
+                  },
+                  "lighting": {
+                    "type": "string",
+                    "enum": [
+                      "manual_diffuse",
+                      "manual_left",
+                      "manual_right",
+                      "unknown"
+                    ]
+                  },
+                  "captured_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Product Id"
+                  },
+                  "lot_id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Lot Id"
+                  },
+                  "profile": {
+                    "type": "string",
+                    "enum": [
+                      "leather",
+                      "footwear",
+                      "auto_component"
+                    ],
+                    "title": "Profile"
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "image",
+                  "view",
+                  "lighting",
+                  "product_id",
+                  "lot_id",
+                  "profile"
+                ]
+              }
+            },
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Product Id"
+                  },
+                  "lot_id": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Lot Id"
+                  },
+                  "profile": {
+                    "type": "string",
+                    "enum": [
+                      "leather",
+                      "footwear",
+                      "auto_component"
+                    ],
+                    "title": "Profile"
+                  },
+                  "source": {
+                    "type": "string",
+                    "const": "station",
+                    "title": "Source"
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "lot_id",
+                  "profile",
+                  "source"
+                ],
+                "title": "StationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "400": {
+            "description": "Malformed multipart request"
+          },
+          "408": {
+            "description": "Upload timed out"
+          },
+          "413": {
+            "description": "Upload too large"
+          },
+          "415": {
+            "description": "Unsupported media type"
+          },
+          "422": {
+            "description": "Invalid fields, unsupported profile or undecodable image"
+          },
+          "503": {
+            "description": "Station acquisition unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/inspections/{inspection_id}": {
+      "get": {
+        "summary": "Get",
+        "operationId": "get_inspections__inspection_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "Inspection not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/captures": {
+      "post": {
+        "summary": "Add",
+        "operationId": "add_inspections__inspection_id__captures_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "400": {
+            "description": "Malformed multipart request"
+          },
+          "408": {
+            "description": "Upload timed out"
+          },
+          "413": {
+            "description": "Upload too large"
+          },
+          "415": {
+            "description": "Unsupported media type"
+          },
+          "422": {
+            "description": "Invalid fields, unsupported profile or undecodable image"
+          },
+          "404": {
+            "description": "Inspection not found"
+          },
+          "409": {
+            "description": "Duplicate capture, completed view or closed inspection"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "view": {
+                    "type": "string",
+                    "enum": [
+                      "front",
+                      "back"
+                    ]
+                  },
+                  "lighting": {
+                    "type": "string",
+                    "enum": [
+                      "manual_diffuse",
+                      "manual_left",
+                      "manual_right",
+                      "unknown"
+                    ]
+                  },
+                  "captured_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "image",
+                  "view",
+                  "lighting"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/finish": {
+      "post": {
+        "summary": "Finish",
+        "operationId": "finish_inspections__inspection_id__finish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "Inspection not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/evidence": {
+      "get": {
+        "summary": "Evidence",
+        "operationId": "evidence_inspections__inspection_id__evidence_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Evidence"
+                  },
+                  "title": "Response Evidence Inspections  Inspection Id  Evidence Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "Inspection not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inspections/{inspection_id}/evidence/{capture_id}/image": {
+      "get": {
+        "summary": "Original",
+        "operationId": "original_inspections__inspection_id__evidence__capture_id__image_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "capture_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Capture Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "Evidence not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/benchmarks/latest": {
+      "get": {
+        "summary": "Latest Benchmark",
+        "operationId": "latest_benchmark_benchmarks_latest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required when authentication is configured"
+          },
+          "404": {
+            "description": "No measured physical benchmark available"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Action": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "capture_required_view",
+              "recapture",
+              "human_review"
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "front",
+                  "back"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View"
+          },
+          "lighting": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "manual_diffuse",
+                  "manual_left",
+                  "manual_right",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lighting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "Action"
+      },
+      "BenchmarkResult": {
+        "properties": {
+          "measured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Measured At"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "physical",
+              "synthetic"
+            ],
+            "title": "Source"
+          },
+          "method": {
+            "type": "string",
+            "const": "manual_diffuse_two_view",
+            "title": "Method",
+            "default": "manual_diffuse_two_view"
+          },
+          "algorithm_version": {
+            "type": "string",
+            "const": "0.1.0",
+            "title": "Algorithm Version",
+            "default": "0.1.0"
+          },
+          "pieces": {
+            "type": "integer",
+            "title": "Pieces"
+          },
+          "captures": {
+            "type": "integer",
+            "title": "Captures"
+          },
+          "holds": {
+            "type": "integer",
+            "title": "Holds"
+          },
+          "missed_critical_pieces": {
+            "type": "integer",
+            "title": "Missed Critical Pieces"
+          },
+          "piece_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Recall"
+          },
+          "piece_precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Precision"
+          },
+          "piece_false_positive_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece False Positive Rate"
+          },
+          "required_view_coverage": {
+            "type": "number",
+            "title": "Required View Coverage"
+          },
+          "median_decode_and_analysis_ms": {
+            "type": "number",
+            "title": "Median Decode And Analysis Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measured_at",
+          "dataset_id",
+          "source",
+          "pieces",
+          "captures",
+          "holds",
+          "missed_critical_pieces",
+          "piece_recall",
+          "piece_precision",
+          "piece_false_positive_rate",
+          "required_view_coverage",
+          "median_decode_and_analysis_ms"
+        ],
+        "title": "BenchmarkResult"
+      },
+      "Box": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "title": "Box"
+      },
+      "Candidate": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Evidence Id"
+          },
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "local_contrast_candidate",
+            "title": "Kind",
+            "default": "local_contrast_candidate"
+          },
+          "box": {
+            "$ref": "#/components/schemas/Box"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "region_id",
+          "box"
+        ],
+        "title": "Candidate"
+      },
+      "Capabilities": {
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "const": "1.0.0",
+            "title": "Contract Version"
+          },
+          "profiles": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProfileCapability"
+            },
+            "propertyNames": {
+              "enum": [
+                "leather",
+                "footwear",
+                "auto_component"
+              ]
+            },
+            "type": "object",
+            "title": "Profiles"
+          },
+          "manual_upload": {
+            "type": "boolean",
+            "title": "Manual Upload"
+          },
+          "classical_candidates": {
+            "type": "boolean",
+            "title": "Classical Candidates"
+          },
+          "trained_model": {
+            "type": "boolean",
+            "title": "Trained Model"
+          },
+          "physical_measurements": {
+            "type": "boolean",
+            "title": "Physical Measurements"
+          },
+          "station_acquisition": {
+            "type": "boolean",
+            "title": "Station Acquisition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contract_version",
+          "profiles",
+          "manual_upload",
+          "classical_candidates",
+          "trained_model",
+          "physical_measurements",
+          "station_acquisition"
+        ],
+        "title": "Capabilities"
+      },
+      "Coverage": {
+        "properties": {
+          "required_regions": {
+            "type": "integer",
+            "title": "Required Regions"
+          },
+          "inspected_regions": {
+            "type": "integer",
+            "title": "Inspected Regions"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/Region"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "required_regions",
+          "inspected_regions",
+          "complete",
+          "regions"
+        ],
+        "title": "Coverage"
+      },
+      "Evidence": {
+        "properties": {
+          "capture_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Capture Id"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "front",
+              "back"
+            ],
+            "title": "View"
+          },
+          "lighting": {
+            "type": "string",
+            "enum": [
+              "manual_diffuse",
+              "manual_left",
+              "manual_right",
+              "unknown"
+            ],
+            "title": "Lighting"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png"
+            ],
+            "title": "Media Type"
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          },
+          "calibration_status": {
+            "type": "string",
+            "const": "uncalibrated",
+            "title": "Calibration Status",
+            "default": "uncalibrated"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "processing_time_ms": {
+            "type": "number",
+            "title": "Processing Time Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "capture_id",
+          "view",
+          "lighting",
+          "received_at",
+          "sha256",
+          "media_type",
+          "image_url",
+          "quality",
+          "processing_time_ms"
+        ],
+        "title": "Evidence"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HardwareStatus": {
+        "properties": {
+          "esp32_verified": {
+            "type": "boolean",
+            "title": "Esp32 Verified"
+          },
+          "station_camera_verified": {
+            "type": "boolean",
+            "title": "Station Camera Verified"
+          },
+          "external_lighting_verified": {
+            "type": "boolean",
+            "title": "External Lighting Verified"
+          },
+          "serial_ports_detected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial Ports Detected"
+          },
+          "manual_upload_available": {
+            "type": "boolean",
+            "title": "Manual Upload Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "esp32_verified",
+          "station_camera_verified",
+          "external_lighting_verified",
+          "serial_ports_detected",
+          "manual_upload_available"
+        ],
+        "title": "HardwareStatus"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "contract_version": {
+            "type": "string",
+            "const": "1.0.0",
+            "title": "Contract Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "contract_version"
+        ],
+        "title": "Health"
+      },
+      "InspectionResult": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Product Id"
+          },
+          "lot_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Lot Id"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "leather",
+              "footwear",
+              "auto_component"
+            ],
+            "title": "Profile"
+          },
+          "contract_version": {
+            "type": "string",
+            "const": "1.0.0",
+            "title": "Contract Version",
+            "default": "1.0.0"
+          },
+          "algorithm_version": {
+            "type": "string",
+            "const": "0.1.0",
+            "title": "Algorithm Version",
+            "default": "0.1.0"
+          },
+          "inspection_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Inspection Id"
+          },
+          "execution_mode": {
+            "type": "string",
+            "const": "real",
+            "title": "Execution Mode",
+            "default": "real"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "capturing",
+              "analyzing",
+              "awaiting_capture",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "no_defect_flagged",
+              "review",
+              "reject_recommended",
+              "hold"
+            ],
+            "title": "Recommendation"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "image_quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "defects": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "type": "array",
+            "title": "Defects"
+          },
+          "uncertain_regions": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "type": "array",
+            "title": "Uncertain Regions"
+          },
+          "lighting_modes_used": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "manual_diffuse",
+                "manual_left",
+                "manual_right",
+                "unknown"
+              ]
+            },
+            "type": "array",
+            "title": "Lighting Modes Used"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "action_history": {
+            "items": {
+              "$ref": "#/components/schemas/Action"
+            },
+            "type": "array",
+            "title": "Action History"
+          },
+          "processing_time_ms": {
+            "type": "number",
+            "title": "Processing Time Ms"
+          },
+          "capture_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Time Ms"
+          },
+          "model_version": {
+            "type": "null",
+            "title": "Model Version"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "human_approval_required": {
+            "type": "boolean",
+            "const": true,
+            "title": "Human Approval Required",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "lot_id",
+          "profile",
+          "inspection_id",
+          "status",
+          "recommendation",
+          "coverage",
+          "image_quality",
+          "defects",
+          "uncertain_regions",
+          "lighting_modes_used",
+          "actions",
+          "action_history",
+          "processing_time_ms",
+          "warnings",
+          "evidence"
+        ],
+        "title": "InspectionResult"
+      },
+      "ProfileCapability": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "experimental",
+              "unsupported",
+              "validated"
+            ],
+            "title": "Status"
+          },
+          "required_views": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "front",
+                    "back"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Views"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ProfileCapability"
+      },
+      "Quality": {
+        "properties": {
+          "acceptable": {
+            "type": "boolean",
+            "title": "Acceptable",
+            "default": false
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "sharpness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpness"
+          },
+          "dark_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dark Fraction"
+          },
+          "glare_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glare Fraction"
+          }
+        },
+        "type": "object",
+        "title": "Quality"
+      },
+      "Region": {
+        "properties": {
+          "region_id": {
+            "type": "string",
+            "title": "Region Id"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "front",
+              "back"
+            ],
+            "title": "View"
+          },
+          "box": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Box"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "required_lighting": {
+            "type": "string",
+            "enum": [
+              "manual_diffuse",
+              "manual_left",
+              "manual_right",
+              "unknown"
+            ],
+            "title": "Required Lighting",
+            "default": "manual_diffuse"
+          },
+          "completed_lighting": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "manual_diffuse",
+                  "manual_left",
+                  "manual_right",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Lighting"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NOT_INSPECTED",
+              "INSUFFICIENT_QUALITY",
+              "INSPECTED",
+              "SUSPICIOUS"
+            ],
+            "title": "State",
+            "default": "NOT_INSPECTED"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_id",
+          "view"
+        ],
+        "title": "Region"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
