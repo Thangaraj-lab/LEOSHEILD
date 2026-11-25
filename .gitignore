@@ -1,0 +1,17 @@
+.env
+.venv/
+venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+storage/database/*
+storage/images/*
+storage/evidence/*
+storage/reports/*
+storage/lab_reports/*
+storage/passports/*
+storage/backups/*
+storage/logs/*
+!storage/**/.gitkeep

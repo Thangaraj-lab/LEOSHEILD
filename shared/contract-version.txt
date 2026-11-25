@@ -1,0 +1,1 @@
+1.0.0 (provisional Laptop 1 inspection result shape; Laptop 1 OpenAPI not received)

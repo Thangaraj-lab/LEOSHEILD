@@ -1,0 +1,43 @@
+{
+  "contract_version": "1.0.0",
+  "status": "provisional_laptop2_notes_not_laptop1_authority",
+  "owner": "Laptop 1 AI engine",
+  "base_url_env": "AI_ENGINE_URL",
+  "authentication": "Bearer AI_ENGINE_TOKEN when configured; confirm with Laptop 1",
+  "endpoints": {
+    "health": {"method": "GET", "path": "/health"},
+    "hardware_status": {"method": "GET", "path": "/hardware/status"},
+    "capabilities": {"method": "GET", "path": "/engine/capabilities"},
+    "lighting_set": {"method": "POST", "path": "/lighting/set", "not_called": true},
+    "capture": {"method": "POST", "path": "/capture", "not_called": true},
+    "inspect": {"method": "POST", "path": "/inspect"},
+    "inspection_result": {"method": "GET", "path": "/inspections/{id}"},
+    "evidence_metadata": {"method": "GET", "path": "/inspections/{id}/evidence"},
+    "benchmarks": {"method": "GET", "path": "/benchmarks/latest", "not_called": true}
+  },
+  "inspect_request": {
+    "transport": "multipart",
+    "laptop2_current_fields": ["image", "product_id", "lot_id", "profile", "lighting_mode"],
+    "unconfirmed_fields": ["profile", "lighting_mode"],
+    "additional_image_submission": "UNRESOLVED; operator evidence is stored locally and is not resubmitted",
+    "idempotency": "Laptop2 deduplicates its business POST; no upstream idempotency header is sent until agreed"
+  },
+  "result_values_from_master_contract": {
+    "recommendations": ["no_defect_flagged", "review", "reject_recommended", "hold"],
+    "job_states": ["pending", "capturing", "analyzing", "awaiting_capture", "completed", "failed", "cancelled"],
+    "coordinate_system": "normalized 0..1 relative to original image",
+    "inspection_identifier": "UUID"
+  },
+  "lighting_labels_for_operator_metadata": ["normal", "top", "left", "right", "front", "back", "unknown"],
+  "hardware_note": "Laptop 1 reports individual ESP32 LED testing; automatic LED-strip lighting is not available. Laptop 2 issues no lighting commands.",
+  "open_questions": [
+    "Exact multipart field names, types and profile/lighting semantics",
+    "Defect bounding-box/polygon schema and image identifiers",
+    "Evidence file download mechanism; metadata is not assumed to contain bytes",
+    "Auth token format and error response schemas",
+    "Job polling terminal states and request idempotency",
+    "Additional-image resubmission endpoint/request schema",
+    "Lighting and hardware command safety parameters",
+    "Capability payload schema and supported mode field names"
+  ]
+}

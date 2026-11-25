@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10191b"><title>LEO Shield · Quality operations</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">L</span><div><strong>LEO SHIELD</strong><small>QUALITY OPERATIONS</small></div></div>
+      <div class="factory-label">WORKSPACE</div><div class="factory-card"><span class="factory-icon">⌂</span><div><strong id="station-name">Local factory</strong><small>Offline workspace</small></div><span class="online-dot"></span></div>
+      <div class="nav-label">OPERATIONS</div><button class="nav-item active" data-view="overview"><span>▦</span> Overview</button><button class="nav-item" data-view="lots"><span>▤</span> Lots & products</button><button class="nav-item" data-view="inspection"><span>◎</span> Inspection workspace</button>
+      <div class="nav-label">QUALITY</div><button class="nav-item" data-view="gate"><span>◇</span> Export Ready Gate</button><button class="nav-item" data-view="insights"><span>⌁</span> Quality insights</button><button class="nav-item" data-view="settings"><span>⚙</span> Station settings</button>
+      <div class="sidebar-bottom"><div class="local-note"><span>●</span><div><strong>Local data protected</strong><small>Stored on this device</small></div></div><button id="logout" class="logout hidden">Sign out</button><div class="version">LEO Shield <span>·</span> Prototype 0.1</div></div>
+    </aside>
+    <main class="main-area"><header class="topbar"><div class="crumb">LEO SHIELD <span>/</span> <b id="section-name">OVERVIEW</b></div><div class="top-actions"><div class="engine-state"><i id="engine-dot"></i><span id="engine-label">Engine status unknown</span></div><div class="user-chip"><span class="avatar">L</span><span id="user-name">Local user</span></div></div></header>
+      <section id="login-view" class="login-wrap hidden"><div class="login-card"><div class="login-emblem">L</div><div class="eyebrow">LOCAL QUALITY WORKSPACE</div><h1>Sign in to LEO Shield</h1><p>Use your factory account to access local inspection records.</p><form id="login-form"><label>Username<input name="username" autocomplete="username" required value="owner"></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="primary full" type="submit">Sign in <span>→</span></button></form><div id="login-error" class="error-text"></div><small class="muted">On first launch, the startup script securely prompts you to create the owner password.</small></div></section>
+      <section id="content" class="content"></section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/static/camera.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</body></html>

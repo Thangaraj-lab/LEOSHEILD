@@ -1,0 +1,5 @@
+# Testing strategy and results
+
+`python -m pytest -q` currently reports 5 passed. Tests use temporary SQLite, actual Pillow-created PNG files and explicit mocked Laptop 1 contract results (never presented as live results). Coverage includes image validation, request deduplication, async job polling, original recommendation/event history, result/coverage gating, capture metadata and hashes, defect correction, supplemental-evidence labeling, reinspection counts, disconnection persistence, restart recovery, buyer rules, measurements, reviewed lab evidence, exact dispatch quantity, role enforcement, analytics and PDF signatures/headers.
+
+`python -m py_compile ...` and `node --check frontend/app.js` pass. There is no installed React/Vite/Vitest/Playwright toolchain, so no frontend unit tests or production bundle are available. FastAPI 0.115.12 with Starlette 1.8.0 is incompatible; async/ASGI HTTP tests hang in this host. The managed environment also denies loopback sockets, so HTTP upload, browser navigation and full app startup have not been verified end-to-end. Live Laptop 1, ESP32, camera and cross-laptop Wi-Fi tests remain outstanding.
